@@ -1,0 +1,50 @@
+{
+  "entities": {
+    "Submission": {
+      "title": "Poetry Submission",
+      "description": "A submission for the joint poetry book.",
+      "type": "object",
+      "properties": {
+        "authorName": { "type": "string", "description": "Name of the author" },
+        "authorBio": { "type": "string", "description": "Short biography of the author" },
+        "authorEmail": { "type": "string", "description": "Email of the author" },
+        "submissionType": { "type": "string", "enum": ["poem", "story"], "description": "Type of submission" },
+        "authorPhoto": { "type": "string", "description": "Base64 encoded image or URL of the author's photo" },
+        "package": { "type": "string", "enum": ["1", "2", "4", "10"], "description": "Selected package (number of items)" },
+        "poems": { "type": "array", "items": { "type": "string" }, "description": "List of original poems" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"], "description": "Status of the submission" },
+        "uid": { "type": "string", "description": "User ID of the submitter" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Time of submission" }
+      },
+      "required": ["authorName", "authorBio", "authorEmail", "submissionType", "package", "poems", "uid", "createdAt"]
+    },
+    "Profile": {
+      "title": "User Profile",
+      "description": "Default author information for a user.",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "bio": { "type": "string" },
+        "facebook": { "type": "string" },
+        "twitter": { "type": "string" },
+        "instagram": { "type": "string" },
+        "website": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "email": { "type": "string" },
+        "uid": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["displayName", "uid", "email"]
+    }
+  },
+  "firestore": {
+    "/submissions/{submissionId}": {
+      "schema": "Submission",
+      "description": "Collection of poetry submissions"
+    },
+    "/profiles/{userId}": {
+      "schema": "Profile",
+      "description": "User profile information"
+    }
+  }
+}

@@ -1,0 +1,85 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: submissions
+    // Document ID: auto-generated
+    // Fields:
+    //   - authorName: string (required)
+    //   - authorBio: string (required)
+    //   - authorEmail: string (required)
+    //   - submissionType: string (required, enum: ["poem", "story"])
+    //   - authorPhoto: string (optional)
+    //   - package: string (required, enum: ["1", "2", "4", "10"])
+    //   - poems: list of strings (required, size matches package)
+    //   - status: string (required, default: "pending")
+    //   - uid: string (required, matches auth.uid)
+    //   - createdAt: timestamp (required)
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.email == "shahinalam3546@gmail.com" && request.auth.token.email_verified == true);
+    }
+
+    function isValidSubmission(data) {
+      let validPackages = ["1", "2", "3", "4", "10"];
+      let validTypes = ["poem", "story"];
+      return data.authorName is string && data.authorName.size() > 0 && data.authorName.size() < 100 &&
+             data.authorBio is string && data.authorBio.size() > 0 && data.authorBio.size() < 1000 &&
+             data.authorEmail is string && data.authorEmail == request.auth.token.email &&
+             data.submissionType in validTypes &&
+             data.package in validPackages &&
+             data.poems is list && data.poems.size() > 0 && data.poems.size() <= 10 &&
+             data.status in ["pending", "approved", "rejected", "draft"] &&
+             data.uid == request.auth.uid &&
+             data.createdAt is timestamp &&
+             (!('transactionId' in data) || (data.transactionId is string && data.transactionId.size() >= 8 && data.transactionId.size() < 50)) &&
+             (!('plagiarismChecked' in data) || data.plagiarismChecked is bool) &&
+             (!('adminFeedback' in data) || (data.adminFeedback is string && data.adminFeedback.size() < 2000));
+    }
+
+    function isValidProfile(data) {
+      return data.displayName is string && data.displayName.size() >= 0 && data.displayName.size() < 100 &&
+             (data.uid == request.auth.uid || isAdmin()) &&
+             (data.email == request.auth.token.email || isAdmin()) &&
+             (!('bio' in data) || (data.bio is string && data.bio.size() < 1000)) &&
+             (!('facebook' in data) || (data.facebook is string && data.facebook.size() < 500)) &&
+             (!('twitter' in data) || (data.twitter is string && data.twitter.size() < 500)) &&
+             (!('instagram' in data) || (data.instagram is string && data.instagram.size() < 500)) &&
+             (!('website' in data) || (data.website is string && data.website.size() < 500)) &&
+             (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() < 1000000)) &&
+             (!('updatedAt' in data) || (data.updatedAt is timestamp));
+    }
+
+    match /submissions/{submissionId} {
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidSubmission(request.resource.data) && request.resource.data.status == "pending";
+      allow update: if isAuthenticated() && (
+        (isOwner(resource.data.uid) && isValidSubmission(request.resource.data) && request.resource.data.status == resource.data.status) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /profiles/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin()) && isValidProfile(request.resource.data);
+    }
+
+    match /test/{docId} {
+      allow read, write: if true;
+    }
+  }
+}
